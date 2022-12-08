@@ -1,0 +1,6 @@
+FROM mattrayner/lamp:latest-1804
+COPY  /db/mysql.sql /db/
+COPY /src /app/
+EXPOSE 80
+EXPOSE 443
+CMD ["/run.sh"]
