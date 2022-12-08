@@ -29,4 +29,5 @@ jobs:
 
     - name: Container ACR
       run: |
+           docker login acrpizzadefaulteastusnp76.azurecr.io -u acrpizzadefaulteastusnp76 -p CqtbrsbElwTAkqZZLZZogLUoYzgpiS2CAvX5vRsoZe+ACRDqFS1z
            docker push acrpizzadefaulteastusnp76.azurecr.io/myapp:0.0.1
