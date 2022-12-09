@@ -15,19 +15,42 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: |
-         cd ${{ github.workspace }}/container
-         docker build .  --tag acrpizzadefaulteastusnp76.azurecr.io/myapp:0.0.1
+      run: docker build .  --tag ${{ secrets.ACR_URL }}/bingopizza:0.0.1
     
+    - name: Azure CLI ACR Login
+      uses: Azure/cli@v1
+      with:
+        inlineScript: |
+                    az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET -t $ARM_TENANT_ID
+                    az acr login --name ${{ secrets.ACR_URL }} --expose-token
+                    docker push ${{ secrets.ACR_URL }}/bingopizza:0.0.1
+      env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+
+    - name: Container ACR
+      run: |
+           docker login ${{ secrets.ACR_URL }} -u ${{ secrets.ACR }} -p ${{ secrets.ACR_Pass }}
+           docker push ${{ secrets.ACR_URL }}/bingopizza:0.0.1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'Production'
+
+    steps:
     - name: Azure CLI Action
       uses: Azure/cli@v1
       with:
         inlineScript: |
-                    az login --service-principal -u f15382ba-78f5-4c43-90ef-7a9a0c8280bc -p IPz8Q~ULCALJJV0xd_JYw5Iue9hLSa4V~jBagbme -t f41f4204-5be7-4e45-8e45-cf5fcd55b425
-                    az acr login -n acrpizzadefaulteastusnp76 --expose-token
-                   
-
-    - name: Container ACR
-      run: |
-           docker login acrpizzadefaulteastusnp76.azurecr.io -u acrpizzadefaulteastusnp76 -p CqtbrsbElwTAkqZZLZZogLUoYzgpiS2CAvX5vRsoZe+ACRDqFS1z
-           docker push acrpizzadefaulteastusnp76.azurecr.io/myapp:0.0.1
+                    az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET -t $ARM_TENANT_ID
+                    az container app up --acr ${{ secrets.ACR }} --port 80
+                    az container exec -g ${{ secrets.RG }} --name ${{ secrets.App }} --container-name ${{ secrets.container }} --exec-command "/bin/bach -c /etc/init.d/apache2 start"
+      env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}  
